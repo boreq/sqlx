@@ -171,15 +171,44 @@ func (m *Mapper) TraversalsByName(t reflect.Type, names []string) [][]int {
 	tm := m.TypeMap(t)
 
 	r := make([][]int, 0, len(names))
-	for _, name := range names {
-		fi, ok := tm.Names[name]
-		if !ok {
+	for i, name := range names {
+		indexes := m.findNameIndexes(names, name)
+		fields := m.findRecursive(tm.Tree, name)
+		var found bool
+		for j, index := range indexes {
+			if index == i && len(fields) > j {
+				r = append(r, fields[j].Index)
+				found = true
+			}
+		}
+		if !found {
 			r = append(r, []int{})
-		} else {
-			r = append(r, fi.Index)
 		}
 	}
 	return r
+}
+
+func (m *Mapper) findRecursive(fi *FieldInfo, name string) []*FieldInfo {
+	var rv []*FieldInfo
+	if fi.Name == name {
+		rv = append(rv, fi)
+	}
+	for _, child := range fi.Children {
+		if child != nil {
+			rv = append(rv, m.findRecursive(child, name)...)
+		}
+	}
+	return rv
+}
+
+func (m *Mapper) findNameIndexes(names []string, name string) []int {
+	var rv []int
+	for i, nme := range names {
+		if nme == name {
+			rv = append(rv, i)
+		}
+	}
+	return rv
 }
 
 // FieldByIndexes returns a value for the field given by the struct traversal
